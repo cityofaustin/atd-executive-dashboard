@@ -1,13 +1,17 @@
 import argparse
 from io import StringIO
 import os
+import logging
 
 import cx_Oracle
 import pandas as pd
 import boto3
 
+import utils
+
 # For local dev:
 # from dotenv import load_dotenv
+
 # load_dotenv(".env")
 
 # AMANDA RR DB Credentials
@@ -23,7 +27,9 @@ AWS_PASS = os.getenv("EXEC_DASH_PASS")
 BUCKET = os.getenv("BUCKET_NAME")
 
 QUERIES = {
-    "permit_requests": "SELECT Foldertype,subcode,TO_CHAR(ROUND(issuedate, 'DAY'), 'YYYY-MM-DD'),COUNT(1) IssuedROWPermits FROM folder WHERE foldertype IN('DS', 'RW', 'EX') AND issuedate >= TO_DATE('10-01-2018', 'mm-dd-yyyy') GROUP BY TO_CHAR(ROUND(issuedate, 'DAY'), 'YYYY-MM-DD'), Foldertype, subcode",
+    "applications_received": "SELECT Foldertype,subcode,TO_CHAR(ROUND(INDATE,'DDD'),'YYYY-MM-DD'),COUNT(1)IssuedROWPermits FROM folder WHERE(foldertype in('DS')AND STATUSCODE NOT IN(50005)AND INDATE>=TO_DATE('10-01-2018','mm-dd-yyyy')AND INDATE IS NOT NULL)OR(foldertype in('RW','EX')AND STATUSCODE NOT IN(70045,50003)AND INDATE>=TO_DATE('10-01-2018','mm-dd-yyyy')AND SUBCODE NOT IN(50510)AND INDATE IS NOT NULL)GROUP BY TO_CHAR(ROUND(INDATE,'DDD'),'YYYY-MM-DD'),Foldertype,subcode ORDER BY Foldertype",
+    "active_permits": "SELECT Foldertype,COUNT(1)ACTIVEPERMITS FROM folder WHERE(foldertype in('EX','DS')AND STATUSCODE IN(50010))OR(foldertype in('RW')AND STATUSCODE IN(50010)AND FOLDERNAME not like'LA-%')GROUP BY Foldertype ORDER BY Foldertype",
+    "issued_permits": "SELECT Foldertype,subcode,TO_CHAR(ROUND(ISSUEDATE,'DDD'),'YYYY-MM-DD'),COUNT(1)IssuedROWPermits FROM folder WHERE(foldertype in('EX','DS')AND ISSUEDATE>=TO_DATE('10-01-2018','mm-dd-yyyy')AND ISSUEDATE IS NOT NULL)OR(foldertype in('RW')AND ISSUEDATE>=TO_DATE('10-01-2018','mm-dd-yyyy')AND SUBCODE NOT IN(50510)AND ISSUEDATE IS NOT NULL)GROUP BY TO_CHAR(ROUND(ISSUEDATE,'DDD'),'YYYY-MM-DD'),Foldertype,subcode ORDER BY Foldertype",
 }
 
 
@@ -50,7 +56,7 @@ def row_factory(cursor):
     """
     Define cursor row handler which returns each row as a dict
     h/t https://stackoverflow.com/questions/35045879/cx-oracle-how-can-i-receive-each-row-as-a-dictionary
-    
+
     Parameters
     ----------
     cursor : cx_Oracle Cursor object
@@ -67,13 +73,13 @@ def df_to_s3(df, resource, filename):
     """
     Send pandas dataframe to an S3 bucket as a CSV
     h/t https://stackoverflow.com/questions/38154040/save-dataframe-to-csv-directly-to-s3-python
-    
+
     Parameters
     ----------
     df : Pandas Dataframe
     resource : boto3 s3 resource
     filename : String of the file that will be created in the S3 bucket ex:
-    
+
     """
     csv_buffer = StringIO()
     df.to_csv(csv_buffer, index=False)
@@ -86,12 +92,14 @@ def main(args):
     cursor = conn.cursor()
 
     # Execute our query
+    logger.info(f"Executing query: {args.query}")
     cursor.execute(QUERIES[args.query])
     cursor.rowfactory = row_factory(cursor)
     rows = cursor.fetchall()
     conn.close()
 
     # Upload to S3
+    logger.info(f"Uploading {len(rows)} rows to S3")
     s3_resource = boto3.resource(
         "s3", aws_access_key_id=AWS_ACCESS_ID, aws_secret_access_key=AWS_PASS
     )
@@ -106,10 +114,15 @@ parser.add_argument(
     "--query",
     choices=list(QUERIES.keys()),
     required=True,
-    help="Name of the query defined at the top of this script. Ex: permit_requests",
+    help="Name of the query defined by the dict at the top of this script. Ex: applications_received",
 )
 
 args = parser.parse_args()
+
+logger = utils.get_logger(
+    __name__,
+    level=logging.INFO,
+)
 
 if __name__ == "__main__":
     main(args)

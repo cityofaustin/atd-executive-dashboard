@@ -1,3 +1,7 @@
+"""
+Queries the AMANDA read-replica DB and sents the result as a CSV in S3
+"""
+
 import argparse
 from io import StringIO
 import os

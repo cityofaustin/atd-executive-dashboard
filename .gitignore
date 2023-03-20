@@ -2,3 +2,4 @@
 .env
 env_file
 .DS_Store
+.idea

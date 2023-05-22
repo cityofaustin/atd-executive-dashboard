@@ -30,10 +30,83 @@ AWS_ACCESS_ID = os.getenv("EXEC_DASH_ACCESS_ID")
 AWS_PASS = os.getenv("EXEC_DASH_PASS")
 BUCKET = os.getenv("BUCKET_NAME")
 
+"""
+Queries:
+
+applications_received: gets the count of permits requested grouped by type, date, and subcode. Additional filtering is added to 
+remove subcodes that are not used by the ROW team.
+
+active_permits: gets the count of the number of permits that are currently active for each type of permit. Does not include
+those DS or EX permits that start with LA- since those are also not part of ROW division's work. This should be treated 
+as a snapshot in time as permits will enter and leave the active status all the time.
+
+issued_permits: similar to applications_received but is now for counting those permits that were actually issued.
+
+"""
+
 QUERIES = {
-    "applications_received": "SELECT Foldertype,subcode,TO_CHAR(ROUND(INDATE,'DDD'),'YYYY-MM-DD'),COUNT(1)IssuedROWPermits FROM folder WHERE(foldertype in('DS')AND STATUSCODE NOT IN(50005)AND INDATE>=TO_DATE('10-01-2018','mm-dd-yyyy')AND INDATE IS NOT NULL)OR(foldertype in('RW','EX')AND STATUSCODE NOT IN(70045,50003)AND INDATE>=TO_DATE('10-01-2018','mm-dd-yyyy')AND SUBCODE NOT IN(50510)AND INDATE IS NOT NULL)GROUP BY TO_CHAR(ROUND(INDATE,'DDD'),'YYYY-MM-DD'),Foldertype,subcode ORDER BY Foldertype",
-    "active_permits": "SELECT Foldertype,COUNT(1)ACTIVEPERMITS FROM folder WHERE(foldertype in('EX','DS')AND STATUSCODE IN(50010))OR(foldertype in('RW')AND STATUSCODE IN(50010)AND FOLDERNAME not like'LA-%')GROUP BY Foldertype ORDER BY Foldertype",
-    "issued_permits": "SELECT Foldertype,subcode,TO_CHAR(ROUND(ISSUEDATE,'DDD'),'YYYY-MM-DD'),COUNT(1)IssuedROWPermits FROM folder WHERE(foldertype in('EX','DS')AND ISSUEDATE>=TO_DATE('10-01-2018','mm-dd-yyyy')AND ISSUEDATE IS NOT NULL)OR(foldertype in('RW')AND ISSUEDATE>=TO_DATE('10-01-2018','mm-dd-yyyy')AND SUBCODE NOT IN(50510)AND ISSUEDATE IS NOT NULL)GROUP BY TO_CHAR(ROUND(ISSUEDATE,'DDD'),'YYYY-MM-DD'),Foldertype,subcode ORDER BY Foldertype",
+    "applications_received": """
+    SELECT
+        Foldertype,
+        subcode,
+        TO_CHAR(ROUND(INDATE, 'DDD'), 'YYYY-MM-DD'),
+        COUNT(1) IssuedROWPermits
+    FROM
+        folder
+    WHERE (foldertype in('DS')
+        AND STATUSCODE NOT IN(50005)
+        AND INDATE >= TO_DATE('10-01-2018', 'mm-dd-yyyy')
+        AND INDATE IS NOT NULL)
+        OR(foldertype in('RW', 'EX')
+            AND STATUSCODE NOT IN(70045, 50003)
+            AND INDATE >= TO_DATE('10-01-2018', 'mm-dd-yyyy')
+            AND SUBCODE NOT IN(50510)
+            AND INDATE IS NOT NULL)
+    GROUP BY
+        TO_CHAR(ROUND(INDATE, 'DDD'), 'YYYY-MM-DD'),
+        Foldertype,
+        subcode
+    ORDER BY
+        Foldertype
+    """,
+    "active_permits": """
+    SELECT
+        Foldertype,
+        COUNT(1) ACTIVEPERMITS
+    FROM
+        folder
+    WHERE (foldertype in('EX', 'DS')
+        AND STATUSCODE IN(50010))
+        OR(foldertype in('RW')
+            AND STATUSCODE IN(50010)
+            AND FOLDERNAME NOT LIKE 'LA-%')
+    GROUP BY
+        Foldertype
+    ORDER BY
+        Foldertype
+    """,
+    "issued_permits": """
+    SELECT
+        Foldertype,
+        subcode,
+        TO_CHAR(ROUND(ISSUEDATE, 'DDD'), 'YYYY-MM-DD'),
+        COUNT(1) IssuedROWPermits
+    FROM
+        folder
+    WHERE (foldertype in('EX', 'DS')
+        AND ISSUEDATE >= TO_DATE('10-01-2018', 'mm-dd-yyyy')
+        AND ISSUEDATE IS NOT NULL)
+        OR(foldertype in('RW')
+            AND ISSUEDATE >= TO_DATE('10-01-2018', 'mm-dd-yyyy')
+            AND SUBCODE NOT IN(50510)
+            AND ISSUEDATE IS NOT NULL)
+    GROUP BY
+        TO_CHAR(ROUND(ISSUEDATE, 'DDD'), 'YYYY-MM-DD'),
+        Foldertype,
+        subcode
+    ORDER BY
+        Foldertype
+	""",
 }
 
 
@@ -123,10 +196,7 @@ parser.add_argument(
 
 args = parser.parse_args()
 
-logger = utils.get_logger(
-    __name__,
-    level=logging.INFO,
-)
+logger = utils.get_logger(__name__, level=logging.INFO,)
 
 if __name__ == "__main__":
     main(args)

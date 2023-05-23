@@ -4,8 +4,7 @@ name: Docker Image CI
 on:
   push:
     branches:
-      - production
-      - master
+      - main
 
 jobs:
   main:

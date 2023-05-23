@@ -7,5 +7,5 @@ COPY . /app
 RUN chmod -R 755 /app/*
 
 # # Proceed to install the requirements...do
-RUN cd /app && apt-get --allow-releaseinfo-change update 
+RUN apt-get --allow-releaseinfo-change update
 RUN pip install -r requirements.txt

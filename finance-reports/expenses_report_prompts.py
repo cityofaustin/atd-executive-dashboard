@@ -9,7 +9,8 @@ MSTRO_USERNAME = os.getenv("MSTRO_USERNAME")
 MSTRO_PASSWORD = os.getenv("MSTRO_PASSWORD")
 PROJECT_ID = os.getenv("PROJECT_ID")
 
-REPORT_ID = "E1156650EC43C0F647D1C89E51E52852"
+EXP_REPORT_ID = "1C804F8891479811944EF68F99835649"
+REV_REPORT_ID = "FBC5E5F30744717D7079ADADB956C3BC"
 
 conn = Connection(
     base_url=BASE_URL,
@@ -19,44 +20,116 @@ conn = Connection(
     login_mode=1,
 )
 
-instance_id = report_instance(conn, report_id=REPORT_ID).json()["instanceId"]
-prompts = get_prompted_instance(
-    conn, report_id=REPORT_ID, instance_id=instance_id
-).json()
-print(prompts)
+def expenses_prompts(fy, date, prompts):
+    """
+    date must be in the form of yyyy-mm-dd
+    """
 
-prompt_answers = {
-    "prompts": [
-        {"id": "71AFE887BE4A4FF88CBE3A8E79B692B8", "type": "VALUE", "answers": "2400"},
-        {
-            "id": "30BB5363448007F721216B95C55709B3",
-            "type": "ELEMENTS",
-            "answers": [
-                {"id": "h2022;7CC8145F4591C84C567D60B236792F33", "name": "2022"}
-            ],
-        },
-        {
-            "id": "5554FDDB4204EA8EBAD8D9A1DC46D8FE",
-            "type": "VALUE",
-            "answers": "2022-08-31T05:00:00.000+0000",
-        },
-        {
-            "id": "F4435FAF4C2DC68383051CB1CE2B19A0",
-            "type": "ELEMENTS",
-            "answers": [
-                {"id": "h2022;502D5DEB40B89AA9B51DB2B48F84D1E1", "name": "2022"}
-            ],
-        },
-    ]
-}
+    prompt_answers = {
+        "prompts": [
+            # Department
+            {"id": prompts[0]["id"], "type": "VALUE", "answers": "2400"},
+            # Fiscal Year
+            {
+                "id": prompts[1]["id"],
+                "type": "ELEMENTS",
+                "answers": [
+                    {"id": f"h{fy};{prompts[1]['source']['id']}", "name": f"{fy}"}
+                ],
+            },
+            # Date
+            {
+                "id": prompts[2]["id"],
+                "type": "VALUE",
+                "answers": f"{date}T05:00:00.000+0000",
+            },
+            # Budget Fiscal Year
+            {
+                "id": prompts[3]["id"],
+                "type": "ELEMENTS",
+                "answers": [
+                    {"id": f"h{fy};{prompts[3]['source']['id']}", "name": f"{fy}"}
+                ],
+            },
+        ]
+    }
+    return prompt_answers
 
-res = conn.put(
-    url=conn.base_url
-    + f"/api/reports/{REPORT_ID}/instances/{instance_id}/prompts/answers",
-    json=prompt_answers,
-)
+def revenue_prompts(fy, date, prompts):
+    prompt_answers = {
+        "prompts": [
+            # Department
+            {"id": prompts[0]["id"], "type": "VALUE", "answers": "2400"},
+            # Fiscal Year
+            {
+                "id": prompts[1]["id"],
+                "type": "ELEMENTS",
+                "answers": [
+                    {"id": f"h{fy};{prompts[1]['source']['id']}", "name": f"{fy}"}
+                ],
+            },
+            # Date
+            {
+                "id": prompts[2]["id"],
+                "type": "VALUE",
+                "answers": f"{date}T05:00:00.000+0000",
+            },
+            # Budget Fiscal Year
+            {
+                "id": prompts[4]["id"],
+                "type": "ELEMENTS",
+                "answers": [
+                    {"id": f"h{fy};{prompts[4]['source']['id']}", "name": f"{fy}"}
+                ],
+            },
+        ]
+    }
 
-# res = conn.get(url=conn.base_url + f'/api/v2/reports/{REPORT_ID}/instances/{instance_id}')
-report = Report(conn, id=REPORT_ID, instance_id=instance_id)
-df = report.to_dataframe()
-print(res)
+    return prompt_answers
+
+def get_report_data(prompt_answers, report_id, instance_id):
+    # Send answers
+    res = conn.put(
+        url=conn.base_url
+        + f"/api/reports/{report_id}/instances/{instance_id}/prompts/answers",
+        json=prompt_answers,
+    )
+
+    # Download report results to dataframe
+    report = Report(conn, id=report_id, instance_id=instance_id)
+    df = report.to_dataframe()
+    return df
+
+
+def expense_data():
+    # Expense data
+    instance_id = report_instance(conn, report_id=EXP_REPORT_ID).json()["instanceId"]
+    # Get the prompts required by this report
+    prompts = get_prompted_instance(
+        conn, report_id=EXP_REPORT_ID, instance_id=instance_id
+    ).json()
+    # Get prompt answers
+    prompt_answers = expenses_prompts(2023, "2023-06-30", prompts)
+    df = get_report_data(prompt_answers, EXP_REPORT_ID, instance_id)
+
+    return df
+
+def revenue_data():
+    # Expense data
+    instance_id = report_instance(conn, report_id=REV_REPORT_ID).json()["instanceId"]
+    # Get the prompts required by this report
+    prompts = get_prompted_instance(
+        conn, report_id=REV_REPORT_ID, instance_id=instance_id
+    ).json()
+    # Get prompt answers
+    prompt_answers = revenue_prompts(2023, "2023-06-30", prompts)
+    df = get_report_data(prompt_answers, REV_REPORT_ID, instance_id)
+
+    return df
+
+
+def main():
+    print(expense_data())
+    print(revenue_data())
+
+main()

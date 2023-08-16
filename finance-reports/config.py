@@ -1,7 +1,10 @@
 EXPENSES_FIELD_MAPPING = {
-    "Fund": "fund",
-    "Department": "department",
-    "Unit": "unit",
+    "Fund@Code": "fund",
+    "Fund@Long Name": "fund_name",
+    "Department@Dept": "department",
+    "Department@Long Name": "department_name",
+    "Unit@Unit Code": "unit",
+    "Unit@Long Name": "unit_name",
     "Object Code Category@Code": "object_category_code",
     "Object Code Category@Long Name": "object_category_name",
     "Object Code@Code": "object_code",

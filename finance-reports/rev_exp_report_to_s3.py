@@ -1,13 +1,20 @@
+"""
+Downloads two Microstrategy Reports for Expenses and Revenue. Places the results as a CSV in a S3 bucket.
+Runs the current month's report and last month's report.
+"""
 import argparse
 import calendar
 from datetime import datetime
 from io import StringIO
 import os
+import logging
 
 import boto3
 from mstrio.api.reports import report_instance, get_prompted_instance
 from mstrio.project_objects.report import Report
 from mstrio.connection import Connection
+
+import utils
 
 BASE_URL = os.getenv("BASE_URL")
 MSTRO_USERNAME = os.getenv("MSTRO_USERNAME")
@@ -29,6 +36,7 @@ conn = Connection(
     project_id=PROJECT_ID,
     login_mode=1,
 )
+
 
 def select_month(year, month):
     """
@@ -58,6 +66,7 @@ def select_month(year, month):
 
     return f_year, f_month
 
+
 def get_month_date(year, month):
     """
     Returns the last day of the month as a string for the given year-month integers
@@ -67,6 +76,7 @@ def get_month_date(year, month):
     # Convert to string
     return datetime(year, month, last_day).strftime("%Y-%m-%d")
 
+
 def get_fiscal_year(year, month):
     if month >= 10:
         fiscal_year = year + 1
@@ -75,7 +85,11 @@ def get_fiscal_year(year, month):
 
     return fiscal_year
 
+
 def build_todos(year, month, date_str):
+    """
+    Returns a list of dictionaries of required parameters to run microstrategy reports
+    """
     if month == 1:
         prev_month = 12
         prev_year = year - 1
@@ -139,6 +153,7 @@ def expenses_prompts(fy, date, dept, prompts):
     }
     return prompt_answers
 
+
 def revenue_prompts(fy, date, dept, prompts):
     prompt_answers = {
         "prompts": [
@@ -171,6 +186,7 @@ def revenue_prompts(fy, date, dept, prompts):
 
     return prompt_answers
 
+
 def get_report_data(prompt_answers, report_id, instance_id):
     # Send answers
     res = conn.put(
@@ -186,26 +202,33 @@ def get_report_data(prompt_answers, report_id, instance_id):
 
 
 def expense_data(fy, date_str, dept):
-    # Expense data
+    # Create report instance
     instance_id = report_instance(conn, report_id=EXP_REPORT_ID).json()["instanceId"]
+
     # Get the prompts required by this report
+    # Note that you can examine this json to see prompt format
     prompts = get_prompted_instance(
         conn, report_id=EXP_REPORT_ID, instance_id=instance_id
     ).json()
-    # Get prompt answers
+
+    # Fill in prompt answers
     prompt_answers = expenses_prompts(fy, date_str, dept, prompts)
     df = get_report_data(prompt_answers, EXP_REPORT_ID, instance_id)
 
     return df
 
+
 def revenue_data(fy, date_str, dept):
-    # Expense data
+    # Create report instance
     instance_id = report_instance(conn, report_id=REV_REPORT_ID).json()["instanceId"]
+
     # Get the prompts required by this report
+    # Note that you can examine this json to see prompt format
     prompts = get_prompted_instance(
         conn, report_id=REV_REPORT_ID, instance_id=instance_id
     ).json()
-    # Get prompt answers
+
+    # Fill in prompt answers
     prompt_answers = revenue_prompts(fy, date_str, dept, prompts)
     df = get_report_data(prompt_answers, REV_REPORT_ID, instance_id)
 
@@ -224,39 +247,60 @@ def df_to_s3(df, resource, filename):
     filename : String of the file that will be created in the S3 bucket ex:
 
     """
+    logger.info(f"Uploading {len(df)} rows to S3")
     csv_buffer = StringIO()
     df.to_csv(csv_buffer, index=False)
     resource.Object(BUCKET, f"{filename}.csv").put(Body=csv_buffer.getvalue())
+
+
 def main(args):
     year, month = select_month(args.year, args.month)
+    logger.info(f"args: year = {year}, month = {month}")
     date_str = get_month_date(year, month)
     todos = build_todos(year, month, date_str)
 
     s3_resource = boto3.resource(
-        "s3", aws_access_key_id=AWS_ACCESS_ID, aws_secret_access_key=AWS_SECRET_ACCESS_KEY
+        "s3",
+        aws_access_key_id=AWS_ACCESS_ID,
+        aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
     )
 
     for task in todos:
-
+        logger.info(
+            f"Getting Expenses Report for {task['date']} and department {task['department']}"
+        )
         filename = f"expenses/{task['date']}_{task['department']}"
         df = expense_data(task["fy"], task["date"], task["department"])
-        df_to_s3(df, s3_resource, filename)
+        if not df.empty:
+            df_to_s3(df, s3_resource, filename)
 
+        logger.info(
+            f"Getting Revenue Report for {task['date']} and department {task['department']}"
+        )
         filename = f"revenue/{task['date']}_{task['department']}"
         df = revenue_data(task["fy"], task["date"], task["department"])
-        df_to_s3(df, s3_resource, filename)
+        if not df.empty:
+            df_to_s3(df, s3_resource, filename)
 
-# CLI arguments definition
-parser = argparse.ArgumentParser()
 
-parser.add_argument(
-    "--year", type=int, help=f"Year of folder to select, defaults to current year",
-)
+if __name__ == "__main__":
+    # CLI arguments definition
+    parser = argparse.ArgumentParser()
 
-parser.add_argument(
-    "--month", type=int, help=f"Month of folder to select. defaults to current month",
-)
+    parser.add_argument(
+        "--year",
+        type=int,
+        help=f"Calendar year of report to run, defaults to current year",
+    )
 
-args = parser.parse_args()
+    parser.add_argument(
+        "--month",
+        type=int,
+        help=f"Calendar month of report. defaults to current month",
+    )
 
-main(args)
+    args = parser.parse_args()
+
+    logger = utils.get_logger(__name__, level=logging.INFO,)
+
+    main(args)

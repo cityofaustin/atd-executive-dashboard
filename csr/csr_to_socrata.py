@@ -1,5 +1,7 @@
 import os
 import logging
+import requests
+import csv
 
 import pandas as pd
 import geopandas as gpd
@@ -46,7 +48,13 @@ FIELD_MAPPING = {
 
 
 def extract():
-    df = pd.read_csv(ENDPOINT, sep="\t", encoding="utf_16")
+    res = requests.get(ENDPOINT)
+    res = csv.DictReader(res.text.splitlines(), delimiter='\t')
+    # df = pd.read_csv(ENDPOINT, sep="\t", encoding="utf_16")
+    data = []
+    for row in res:
+        data.append(row)
+    df = pd.DataFrame(data)
     logger.info(f"Downloaded {len(df)} CSRs from endpoint")
     return df
 

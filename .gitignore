@@ -1,4 +1,6 @@
 
 .env
 env_file
-.idea/
+
+.DS_Store
+.idea

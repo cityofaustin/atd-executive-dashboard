@@ -54,7 +54,7 @@ QUERIES = {
     FROM
         folder
     WHERE (foldertype in('DS')
-        AND STATUSCODE NOT IN(50005)
+        AND STATUSCODE NOT IN(50005, 50003, 70045)
         AND INDATE >= TO_DATE('10-01-2018', 'mm-dd-yyyy')
         AND INDATE IS NOT NULL)
         OR(foldertype in('RW', 'EX')
@@ -122,8 +122,8 @@ def get_conn():
     # Need to run this once if you want to work locally
     # Change lib_dir to your cx_Oracle library location
     # https://stackoverflow.com/questions/56119490/cx-oracle-error-dpi-1047-cannot-locate-a-64-bit-oracle-client-library
-    # lib_dir = r"/Users/charliehenry/instantclient_19_8"
-    # cx_Oracle.init_oracle_client(lib_dir=lib_dir)
+    lib_dir = r"/Users/charliehenry/instantclient_19_8"
+    cx_Oracle.init_oracle_client(lib_dir=lib_dir)
 
     dsn_tns = cx_Oracle.makedsn(HOST, PORT, service_name=SERVICE_NAME)
     return cx_Oracle.connect(user=USER, password=PASSWORD, dsn=dsn_tns)

@@ -31,7 +31,7 @@ REVENUE_FIELD_MAPPING = {
     "Revenue Source Category@Long Name": "revenue_source_category_name",
     "Revenue Source@Code": "revenue_source_code",
     "Revenue Source@Long Name": "revenue_source_name",
-    "Revenue Budget YTD with Period Cutoff": "revenue_ytd",
+    "Revenue Budget YTD with Period Cutoff": "revenue_budget_ytd",
     "Proposed Revenue Amount CYE Prompted FY & BFY (Phase 6)": "revenue_cye",
     "Revenue MTD with Period Cutoff": "revenue_mtd",
     "Revenue YTD with Period Cutoff": "revenue_ytd",
@@ -52,6 +52,7 @@ EXPENSES_NUMERIC_COLS = [
 
 REVENUE_NUMERIC_COLS = [
     "revenue_ytd",
+    "revenue_budget_ytd",
     "revenue_cye",
     "revenue_mtd",
     "revenue_itd",

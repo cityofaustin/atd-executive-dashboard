@@ -63,6 +63,8 @@ def convert_from_state_plane(df):
     """
     Adds WGS-84 lat/long columns to the dataframe based on the state plane coordinates.
     """
+    df.loc[df["State Plane X Coordinate"] == "", "State Plane X Coordinate"] = ""
+    df.loc[df["State Plane Y Coordinate"] == "", "State Plane Y Coordinate"] = ""
     gdf = gpd.GeoDataFrame(
         df,
         geometry=gpd.points_from_xy(

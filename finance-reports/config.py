@@ -60,17 +60,21 @@ REVENUE_NUMERIC_COLS = [
     "percent_unrecognized",
 ]
 
-MONTH_LOOKUP = {
-    1: "Jan",
-    2: "Feb",
-    3: "Mar",
-    4: "Apr",
-    5: "May",
-    6: "Jun",
-    7: "Jul",
-    8: "Aug",
-    9: "Sep",
-    10: "Oct",
-    11: "Nov",
-    12: "Dec",
-}
+REVENUE_ID_COLUMN = [
+    "fiscal_year",
+    "fiscal_month",
+    "fund",
+    "department",
+    "unit",
+    "revenue_source_category_code",
+    "revenue_source_code",
+]
+
+EXPENSES_ID_COLUMN = [
+    "fiscal_year",
+    "fiscal_month",
+    "fund",
+    "department",
+    "unit",
+    "object_code",
+]

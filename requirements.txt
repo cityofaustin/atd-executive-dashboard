@@ -1,5 +1,6 @@
 knackpy==1.0.*
-pandas==1.5.*
+mstrio-py==11.3.4.*
+pandas
 boto3==1.19.*
 sodapy==2.1.*
 smartsheet-python-sdk==3.0.*

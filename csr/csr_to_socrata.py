@@ -1,10 +1,13 @@
+"""
+Downloads CSR data from a CSV report endpoint and then uploads the data to a Socrata dataset
+"""
+
 import os
 import logging
-import requests
-import csv
 
 import pandas as pd
 import geopandas as gpd
+import numpy as np
 from sodapy import Socrata
 
 import utils
@@ -48,23 +51,32 @@ FIELD_MAPPING = {
 
 
 def extract():
-    res = requests.get(ENDPOINT)
-    res = csv.DictReader(res.text.splitlines(), delimiter='\t')
-    # df = pd.read_csv(ENDPOINT, sep="\t", encoding="utf_16")
-    data = []
-    for row in res:
-        data.append(row)
-    df = pd.DataFrame(data)
+    df = pd.read_csv(ENDPOINT, sep="\t", encoding="utf_16")
     logger.info(f"Downloaded {len(df)} CSRs from endpoint")
     return df
+
+
+def build_point_data(row):
+    """
+
+    Parameters
+    ----------
+    row: dict of data from a pandas dataframe
+
+    Returns
+    -------
+    None if there is no location data given, or point datatype formatted as expected by Socrata.
+
+    """
+    if pd.isna(row["longitude"]) or pd.isna(row["latitude"]):
+        return None
+    return f"POINT ({row['longitude']} {row['latitude']})"
 
 
 def convert_from_state_plane(df):
     """
     Adds WGS-84 lat/long columns to the dataframe based on the state plane coordinates.
     """
-    df.loc[df["State Plane X Coordinate"] == "", "State Plane X Coordinate"] = ""
-    df.loc[df["State Plane Y Coordinate"] == "", "State Plane Y Coordinate"] = ""
     gdf = gpd.GeoDataFrame(
         df,
         geometry=gpd.points_from_xy(
@@ -77,10 +89,9 @@ def convert_from_state_plane(df):
     # Get wgs84 location columns
     df["latitude"] = gdf["geometry"].y
     df["longitude"] = gdf["geometry"].x
-    df["location"] = (
-        "POINT (" + df["longitude"].astype(str) + " " + df["latitude"].astype(str) + ")"
-    )
+    df["location"] = df.apply(build_point_data, axis=1)
     return df
+
 
 def create_socrata_floating_timestamp(row, date_col):
     """
@@ -91,15 +102,19 @@ def create_socrata_floating_timestamp(row, date_col):
     return row[date_col]
 
 
-
-
 def transform(df):
     logger.info("Transforming CSR data")
     df = convert_from_state_plane(df)
 
     # df = df.apply(create_socrata_floating_timestamp, args=date_cols, axis=1)
     # Converting datetime to correct format for socrata
-    date_cols = ["Status Change Date", "Created Date", "Overdue On Date", "Last Update Date", "Close Date"]
+    date_cols = [
+        "Status Change Date",
+        "Created Date",
+        "Overdue On Date",
+        "Last Update Date",
+        "Close Date",
+    ]
     for col in date_cols:
         df[col] = pd.to_datetime(df[col])
         df[col] = df[col].dt.strftime("%Y-%m-%dT%H:%M:%S")
@@ -108,6 +123,15 @@ def transform(df):
     # Field mapping
     df = df[list(FIELD_MAPPING.keys())]
     df.rename(columns=FIELD_MAPPING, inplace=True)
+
+    # Setting these NaN values to None, because Socrata will be mad otherwise
+    df["state_plane_x_coordinate"] = df["state_plane_x_coordinate"].replace(
+        {np.nan: None}
+    )
+    df["state_plane_y_coordinate"] = df["state_plane_y_coordinate"].replace(
+        {np.nan: None}
+    )
+    df["sr_location"] = df["sr_location"].replace({np.nan: None})
 
     payload = df.to_dict("records")
     return payload
@@ -121,10 +145,15 @@ def load(client, data):
 
 
 def main():
-    soda = Socrata(SO_WEB, SO_TOKEN, username=SO_KEY, password=SO_SECRET, timeout=500,)
+    soda = Socrata(
+        SO_WEB,
+        SO_TOKEN,
+        username=SO_KEY,
+        password=SO_SECRET,
+        timeout=500,
+    )
 
     data = extract()
-    # data = pd.read_csv("sample_csr_data.CSV", sep="\t", encoding="utf_16")
     data = transform(data)
     res = load(soda, data)
 
@@ -132,5 +161,8 @@ def main():
 
 
 if __name__ == "__main__":
-    logger = utils.get_logger(__name__, level=logging.INFO,)
+    logger = utils.get_logger(
+        __name__,
+        level=logging.INFO,
+    )
     main()

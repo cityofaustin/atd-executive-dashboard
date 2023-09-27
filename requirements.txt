@@ -3,3 +3,4 @@ pandas==1.5.*
 boto3==1.19.*
 sodapy==2.1.*
 smartsheet-python-sdk==3.0.*
+geopandas

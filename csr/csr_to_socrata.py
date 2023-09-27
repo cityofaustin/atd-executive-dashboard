@@ -93,20 +93,10 @@ def convert_from_state_plane(df):
     return df
 
 
-def create_socrata_floating_timestamp(row, date_col):
-    """
-    Converts timestamps to the format required by Socrata
-    """
-    if row[date_col]:
-        row[date_col] = row[date_col].strftime("%Y-%m-%dT%H:%M:%S")
-    return row[date_col]
-
-
 def transform(df):
     logger.info("Transforming CSR data")
     df = convert_from_state_plane(df)
 
-    # df = df.apply(create_socrata_floating_timestamp, args=date_cols, axis=1)
     # Converting datetime to correct format for socrata
     date_cols = [
         "Status Change Date",

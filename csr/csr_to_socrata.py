@@ -46,7 +46,8 @@ FIELD_MAPPING = {
     "SR Location": "sr_location",
     "State Plane X Coordinate": "state_plane_x_coordinate",
     "State Plane Y Coordinate": "state_plane_y_coordinate",
-    "location": "Location",
+    "location": "location",
+    "fiscal_year": "fiscal_year",
 }
 
 
@@ -54,23 +55,6 @@ def extract():
     df = pd.read_csv(ENDPOINT, sep="\t", encoding="utf_16")
     logger.info(f"Downloaded {len(df)} CSRs from endpoint")
     return df
-
-
-def build_point_data(row):
-    """
-
-    Parameters
-    ----------
-    row: dict of data from a pandas dataframe
-
-    Returns
-    -------
-    None if there is no location data given, or point datatype formatted as expected by Socrata.
-
-    """
-    if pd.isna(row["longitude"]) or pd.isna(row["latitude"]):
-        return None
-    return f"POINT ({row['longitude']} {row['latitude']})"
 
 
 def convert_from_state_plane(df):
@@ -93,6 +77,37 @@ def convert_from_state_plane(df):
     return df
 
 
+def build_point_data(row):
+    """
+
+    Parameters
+    ----------
+    row: dict of data from a pandas dataframe
+
+    Returns
+    -------
+    None if there is no location data given, or point datatype formatted as expected by Socrata.
+
+    """
+    if pd.isna(row["longitude"]) or pd.isna(row["latitude"]):
+        return None
+    return f"POINT ({row['longitude']} {row['latitude']})"
+
+
+def get_fiscal_year(row):
+    """
+    Returns the fiscal year based on the created date of the record
+    """
+    year = row["datetime"].year
+    month = row["datetime"].month
+    if month >= 10:
+        fiscal_year = year + 1
+    else:
+        fiscal_year = year
+
+    return fiscal_year
+
+
 def transform(df):
     logger.info("Transforming CSR data")
     df = convert_from_state_plane(df)
@@ -109,6 +124,9 @@ def transform(df):
         df[col] = pd.to_datetime(df[col])
         df[col] = df[col].dt.strftime("%Y-%m-%dT%H:%M:%S")
         df[col] = df[col].where(pd.notnull(df[col]), None)
+
+    df["datetime"] = pd.to_datetime(df["Created Date"])
+    df["fiscal_year"] = df.apply(get_fiscal_year, axis=1)
 
     # Field mapping
     df = df[list(FIELD_MAPPING.keys())]

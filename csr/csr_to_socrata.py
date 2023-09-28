@@ -52,7 +52,14 @@ FIELD_MAPPING = {
 
 
 def extract():
-    df = pd.read_csv(ENDPOINT, sep="\t", encoding="utf_16")
+    try:
+        df = pd.read_csv(ENDPOINT, sep="\t", encoding="utf_16")
+    except UnicodeError as e:
+        logger.info("Unexpected file type returned from the CSV endpoint. Check that you are on the city network. "
+                    "It's likely that your request is getting flagged as a bot by the web app firewall.")
+        raise e
+    except Exception as e:
+        raise e
     logger.info(f"Downloaded {len(df)} CSRs from endpoint")
     return df
 
@@ -120,6 +127,8 @@ def transform(df):
         "Last Update Date",
         "Close Date",
     ]
+
+    # date column formatting to match format expected by Socrata
     for col in date_cols:
         df[col] = pd.to_datetime(df[col])
         df[col] = df[col].dt.strftime("%Y-%m-%dT%H:%M:%S")

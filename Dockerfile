@@ -16,5 +16,3 @@ ENV PATH="/root/miniconda/bin:${PATH}"
 RUN conda install --channel conda-forge geopandas
 
 RUN pip install -r requirements.txt
-
-

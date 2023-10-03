@@ -54,7 +54,7 @@ QUERIES = {
     FROM
         folder
     WHERE (foldertype in('DS')
-        AND STATUSCODE NOT IN(50005)
+        AND STATUSCODE NOT IN(50005, 50003, 70045)
         AND INDATE >= TO_DATE('10-01-2018', 'mm-dd-yyyy')
         AND INDATE IS NOT NULL)
         OR(foldertype in('RW', 'EX')
@@ -106,7 +106,7 @@ QUERIES = {
         subcode
     ORDER BY
         Foldertype
-	""",
+    """,
 }
 
 
@@ -196,7 +196,10 @@ parser.add_argument(
 
 args = parser.parse_args()
 
-logger = utils.get_logger(__name__, level=logging.INFO,)
+logger = utils.get_logger(
+    __name__,
+    level=logging.INFO,
+)
 
 if __name__ == "__main__":
     main(args)

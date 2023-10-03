@@ -4,6 +4,3 @@ pandas
 boto3==1.19.*
 sodapy==2.1.*
 smartsheet-python-sdk==3.0.*
-
-# Geopandas not version pinned due to us already pinning Pandas, which is a requirement for geopandas.
-geopandas

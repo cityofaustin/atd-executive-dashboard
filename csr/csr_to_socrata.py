@@ -6,9 +6,9 @@ import os
 import logging
 
 import pandas as pd
-import geopandas as gpd
 import numpy as np
 from sodapy import Socrata
+from pyproj import Transformer
 
 import utils
 
@@ -63,23 +63,14 @@ def extract():
     logger.info(f"Downloaded {len(df)} CSRs from endpoint")
     return df
 
-
 def convert_from_state_plane(df):
     """
-    Adds WGS-84 lat/long columns to the dataframe based on the state plane coordinates.
+    Adds a WGS-84 lat/long column to the dataframe based on the state plane coordinates.
     """
-    gdf = gpd.GeoDataFrame(
-        df,
-        geometry=gpd.points_from_xy(
-            x=df["State Plane X Coordinate"], y=df["State Plane Y Coordinate"]
-        ),
-        crs="ESRI:102739",
-    )
-    gdf = gdf.to_crs("EPSG:4326")
-
-    # Get wgs84 location columns
-    df["latitude"] = gdf["geometry"].y
-    df["longitude"] = gdf["geometry"].x
+    # projection of coordinates
+    transformer = Transformer.from_crs(crs_from="ESRI:102739", crs_to="EPSG:4326")
+    df["latitude"], df["longitude"] = transformer.transform(df["State Plane X Coordinate"].tolist(), df["State Plane Y Coordinate"].tolist())
+    # Create wgs84 location columns in socrata format
     df["location"] = df.apply(build_point_data, axis=1)
     return df
 

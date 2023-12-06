@@ -107,6 +107,30 @@ QUERIES = {
     ORDER BY
         Foldertype
     """,
+    "review_time": """
+    SELECT
+        f.CUSTOMFOLDERNUMBER,
+        f.FOLDERRSN,
+        f.INDATE,
+        f.ISSUEDATE,
+        pa.STARTDATE AS WEBAPPSTART,
+        pa.ENDDATE AS WEBAPPEND,
+        pe.STARTDATE AS EXTEND,
+        fa.ATTEMPTDATE AS DEPT_COMMENTS
+    FROM
+        FOLDER f
+        LEFT OUTER JOIN FOLDERPROCESS pa ON f.FOLDERRSN = pa.FOLDERRSN
+        AND pa.PROCESSCODE = 70000
+        LEFT OUTER JOIN FOLDERPROCESS pe ON f.FOLDERRSN = pe.FOLDERRSN
+        AND pe.PROCESSCODE = 50680
+        LEFT OUTER JOIN FOLDERPROCESSATTEMPT fa ON f.FOLDERRSN = fa.FOLDERRSN
+    WHERE
+        f.FOLDERYEAR > 19
+        AND f.FOLDERTYPE = 'RW'
+        AND f.SUBCODE = 50500
+        AND f.WORKCODE = 50590
+        AND fa.RESULTCODE = 61510
+    """,
 }
 
 

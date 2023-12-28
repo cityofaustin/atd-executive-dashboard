@@ -109,6 +109,17 @@ def transform(data):
     logger.info("Transforming data")
     basic = HTTPBasicAuth(username=SO_USER, password=SO_PASS)
 
+    # metadata fields to pull
+    fields = {
+        "Publishing-Information_Automation-Method": "automation_method",
+        "Publishing-Information_Automation-Method-(if-Other)": "automation_method_other",
+        "Publishing-Information_Update-Frequency": "update_frequency",
+        "Publishing-Information_Spatial-Information": "spatial_information",
+        "Ownership_Department-name": "department_name",
+        "Ownership_Program-Name": "program_name",
+        "Strategic-Area_Strategic-Direction-Outcome": "strategic_area",
+    }
+
     output_data = []
     for row in data:
         row["resource"]["page_views_last_week"] = row["resource"]["page_views"][
@@ -150,6 +161,7 @@ def transform(data):
         else:
             filtered_data["tags"] = ""
 
+        # flattens the domain_private_metadata and domain_metadata into one dict, metadata
         metadata = {}
         if "domain_private_metadata" in row["classification"]:
             for item in row["classification"]["domain_private_metadata"]:
@@ -157,16 +169,7 @@ def transform(data):
         for item in row["classification"]["domain_metadata"]:
             metadata[item["key"]] = item["value"]
 
-        fields = {
-            "Publishing-Information_Automation-Method": "automation_method",
-            "Publishing-Information_Automation-Method-(if-Other)": "automation_method_other",
-            "Publishing-Information_Update-Frequency": "update_frequency",
-            "Publishing-Information_Spatial-Information": "spatial_information",
-            "Ownership_Department-name": "department_name",
-            "Ownership_Program-Name": "program_name",
-            "Strategic-Area_Strategic-Direction-Outcome": "strategic_area",
-        }
-
+        # getting metadata, but checking if it is present first
         for field in fields:
             if field in metadata:
                 filtered_data[fields[field]] = metadata[field]

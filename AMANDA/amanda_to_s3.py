@@ -60,7 +60,7 @@ QUERIES = {
         OR(foldertype in('RW', 'EX')
             AND STATUSCODE NOT IN(70045, 50003)
             AND INDATE >= TO_DATE('10-01-2018', 'mm-dd-yyyy')
-            AND SUBCODE NOT IN(50510)
+            AND SUBCODE NOT IN(50510, 50505)
             AND INDATE IS NOT NULL)
     GROUP BY
         TO_CHAR(ROUND(INDATE, 'DDD'), 'YYYY-MM-DD'),
@@ -98,7 +98,7 @@ QUERIES = {
         AND ISSUEDATE IS NOT NULL)
         OR(foldertype in('RW')
             AND ISSUEDATE >= TO_DATE('10-01-2018', 'mm-dd-yyyy')
-            AND SUBCODE NOT IN(50510)
+            AND SUBCODE NOT IN(50510, 50505)
             AND ISSUEDATE IS NOT NULL)
     GROUP BY
         TO_CHAR(ROUND(ISSUEDATE, 'DDD'), 'YYYY-MM-DD'),
@@ -130,6 +130,23 @@ QUERIES = {
         AND f.WORKCODE = 50590
         AND fa.RESULTCODE = 61510
     """,
+    "ex_permits_issued": """
+    SELECT
+        CONCAT(CONCAT(f.FOLDERYEAR, '-'), f.FOLDERSEQUENCE) AS PERMIT_ID,
+        f.SUBCODE,
+        vs.SUBDESC,
+        f.FOLDERNAME,
+        TO_CHAR(f.INDATE,'MM-DD-YYYY HH24:MI:SS'),
+        TO_CHAR(f.ISSUEDATE,'MM-DD-YYYY HH24:MI:SS')
+    FROM
+        FOLDER f
+        LEFT OUTER JOIN VALIDSUB vs ON f.SUBCODE = vs.SUBCODE
+    WHERE
+        FOLDERTYPE in('EX')
+        AND ISSUEDATE >= TO_DATE('10-01-2018', 'mm-dd-yyyy')
+        AND ISSUEDATE IS NOT NULL
+        AND PRIORITY = 3
+	""",
 }
 
 

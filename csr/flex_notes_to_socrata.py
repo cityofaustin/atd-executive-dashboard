@@ -6,9 +6,7 @@ import os
 import logging
 
 import pandas as pd
-import numpy as np
 from sodapy import Socrata
-from pyproj import Transformer
 
 import utils
 

@@ -7,3 +7,5 @@ smartsheet-python-sdk==3.0.*
 pyproj
 pytz
 openpyxl
+oracledb==2.1.*
+python-dateutil==2.8.*
